@@ -29,5 +29,8 @@ The assistant is designed with a clean, modular architecture, making it easy to 
 ### 1. Clone the Repository
 
 ```bash
-git clone [YOUR_REPO_URL]
-cd cli-chat
+gh repo clone raziel-star/CLI-Chat
+cd [your folder]
+python main.py
+```
+
