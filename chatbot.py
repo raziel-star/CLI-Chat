@@ -21,6 +21,8 @@ def handle_task(user_input):
     bot_response = ""
     try:
         user_lower = user_input.lower()
+        
+        # --- 1. CREATE FILE (משתמש בלוגיקה קיימת של generate_feedback) ---
         if "create file" in user_lower:
             parts = user_input.split(maxsplit=2)
             filename = parts[2].split()[0]
@@ -29,56 +31,101 @@ def handle_task(user_input):
             resp = client.models.generate_content(model="gemini-2.5-pro", contents=[file_prompt])
             file_content = extract_text(resp)
             file_path = create_file(filename, file_content)
+            
+            # המשוב שהמשתמש רוצה
             feedback = generate_feedback(filename, file_content, client)
-            bot_response = f"File '{file_path}' created successfully.\nCLI-Agent Feedback: {feedback}"
+            bot_response = f"File '{file_path}' created successfully.\nCLI-Agent Feedback:\n{feedback}"
 
+        # --- 2. SEND EMAIL (משימה ללא משוב AI נפרד) ---
         elif "send email" in user_lower:
             try:
-                parts = user_input.split(maxsplit=3)
-                to_email, subject, body = parts[1], parts[2], parts[3]
-                bot_response = send_email(to_email, subject, body, 'smtp.gmail.com', 465, 'YOUR_EMAIL', 'YOUR_PASSWORD')
-            except:
-                bot_response = "Invalid email command format."
+                command_tail = user_input[len("send email"):].strip()
+                parts = command_tail.split("|", maxsplit=2) 
+                
+                if len(parts) == 3:
+                    to_email = parts[0].strip()
+                    subject = parts[1].strip()
+                    body = parts[2].strip()
+                    
+                    bot_response = send_email(
+                        to_email, subject, body, 
+                        config.SMTP_SERVER, config.SMTP_PORT, 
+                        config.SENDER_USERNAME, config.SENDER_PASSWORD
+                    )
+                else:
+                    bot_response = "Invalid email command format. Use: send email <TO_EMAIL> | <SUBJECT> | <BODY>"
 
+            except Exception as e:
+                bot_response = f"Error during email processing: {e}"
+
+        # --- 3. SEARCH WEB (שימוש ב-AI לניסוח התשובה) ---
         elif "search web" in user_lower:
-            query = user_input[len("search web "):]
-            bot_response = search_web(query)
+            try:
+                query = user_input[len("search web"):].strip()
+                if not query:
+                    bot_response = "Please provide a query for web search."
+                else:
+                    raw_results = search_web(query)
+                    
+                    if "No results found." in raw_results or "Search failed:" in raw_results:
+                        bot_response = raw_results
+                    else:
+                        # שימוש ב-AI לסיכום וניסוח התוצאות
+                        summary_prompt = (
+                            f"You are CLI-Chat, a professional AI assistant. The user requested to search the web for: '{query}'. "
+                            f"The raw results snippets are:\n---\n{raw_results}\n---\n"
+                            "Based on the raw results, provide a professional, friendly, and concise summary that answers the user's query directly. Do not use markdown (e.g. bold, lists)."
+                        )
+                        summary_resp = client.models.generate_content(
+                            model="gemini-2.5-flash", 
+                            contents=[summary_prompt]
+                        )
+                        bot_response = extract_text(summary_resp)
 
+            except Exception as e:
+                bot_response = f"Error during web search: {e}"
+
+        # --- 4. RUN COMMAND (שימוש ב-AI לניתוח והסבר) ---
         elif "run command" in user_lower:
-            command = user_input[len("run command "):]
-            bot_response = execute_system_command(command)
+            try:
+                command = user_input[len("run command"):].strip()
+                if not command:
+                    bot_response = "Please provide a command to run."
+                else:
+                    raw_output = execute_system_command(command)
+                    
+                    # שימוש ב-AI לניתוח פלט הפקודה
+                    analysis_prompt = (
+                        f"You are CLI-Chat, a professional AI assistant. The user executed the system command: '{command}'. "
+                        f"The raw command output is:\n---\n{raw_output}\n---\n"
+                        "Analyze the output. Explain concisely what happened (e.g., 'The files in the current directory are...' or 'The command executed successfully, but returned an empty output.'). Your response must be in clear, natural language and highly relevant to the command output."
+                    )
+                    analysis_resp = client.models.generate_content(
+                        model="gemini-2.5-flash", 
+                        contents=[analysis_prompt]
+                    )
+                    bot_response = extract_text(analysis_resp)
+
+            except Exception as e:
+                bot_response = f"Error executing command: {e}"
 
         else:
-            bot_response = ai_response(user_input)
+            bot_response = "Task not recognized. Please use one of the predefined tasks (create file, send email, search web, run command)."
 
     except Exception as e:
-        bot_response = f"Error during autonomous task execution: {e}"
+        bot_response = f"An unexpected error occurred during task handling: {e}"
 
     flag[0] = False
     t.join()
+    conversation_memory.append(f"CLI-Agent: Task handled, response is: {bot_response}")
 
     return reverse_hebrew_advanced(bot_response)
 
 def ai_response(user_input):
     prompt = (
-        "You are CLI-Chat, a professional AI assistant created by raziel-star (GitHub user), "
-        "based on a large language model trained by Google.\n\n"
-        "Your tasks and abilities:\n"
-        "- Respond in the same language as the user.\n"
-        "- Answer general questions clearly and concisely.\n"
-        "- Assist in learning, teaching, and research across multiple disciplines, including:\n"
-        "    - Mathematics (basic to advanced)\n"
-        "    - Languages (English grammar, vocabulary, translations)\n"
-        "    - Science (Physics, Chemistry, Biology)\n"
-        "    - History, Sociology, Philosophy, Psychology\n"
-        "    - Economics, Finance, and Business concepts\n"
-        "    - Technology, Computing, AI, and Cybersecurity\n"
-        "    - Health and basic medical knowledge\n"
-        "- Generate, review, or explain content in text, code, or structured data.\n"
-        "- Create professional documents, summaries, and reports.\n"
-        "- Provide feedback and improvement suggestions for user work or files.\n"
-        "- Help with problem-solving, reasoning, logical explanations, and critical thinking.\n"
-        "- Offer creative ideas, project planning, and guidance for learning or professional tasks.\n"
+        "You are CLI-Chat, an advanced, professional AI assistant for the command-line, built using the Gemini API. "
+        "Your primary functions include:\n"
+        "- Providing expert assistance, planning, and guidance for learning or professional tasks.\n"
         "- Assist with exam preparation, exercises, and simulations.\n"
         "- Analyze information, identify patterns, and provide insights or summaries.\n"
         "- Suggest coding solutions, debug code, and provide explanations.\n"
@@ -109,4 +156,3 @@ def ai_response(user_input):
     t.join()
 
     return reverse_hebrew_advanced(bot_response)
-
