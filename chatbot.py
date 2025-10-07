@@ -22,7 +22,6 @@ def handle_task(user_input):
     try:
         user_lower = user_input.lower()
         
-        # --- 1. CREATE FILE (משתמש בלוגיקה קיימת של generate_feedback) ---
         if "create file" in user_lower:
             parts = user_input.split(maxsplit=2)
             filename = parts[2].split()[0]
@@ -31,12 +30,10 @@ def handle_task(user_input):
             resp = client.models.generate_content(model="gemini-2.5-pro", contents=[file_prompt])
             file_content = extract_text(resp)
             file_path = create_file(filename, file_content)
-            
-            # המשוב שהמשתמש רוצה
+
             feedback = generate_feedback(filename, file_content, client)
             bot_response = f"File '{file_path}' created successfully.\nCLI-Agent Feedback:\n{feedback}"
 
-        # --- 2. SEND EMAIL (משימה ללא משוב AI נפרד) ---
         elif "send email" in user_lower:
             try:
                 command_tail = user_input[len("send email"):].strip()
@@ -58,7 +55,6 @@ def handle_task(user_input):
             except Exception as e:
                 bot_response = f"Error during email processing: {e}"
 
-        # --- 3. SEARCH WEB (שימוש ב-AI לניסוח התשובה) ---
         elif "search web" in user_lower:
             try:
                 query = user_input[len("search web"):].strip()
@@ -85,7 +81,6 @@ def handle_task(user_input):
             except Exception as e:
                 bot_response = f"Error during web search: {e}"
 
-        # --- 4. RUN COMMAND (שימוש ב-AI לניתוח והסבר) ---
         elif "run command" in user_lower:
             try:
                 command = user_input[len("run command"):].strip()
@@ -94,7 +89,6 @@ def handle_task(user_input):
                 else:
                     raw_output = execute_system_command(command)
                     
-                    # שימוש ב-AI לניתוח פלט הפקודה
                     analysis_prompt = (
                         f"You are CLI-Chat, a professional AI assistant. The user executed the system command: '{command}'. "
                         f"The raw command output is:\n---\n{raw_output}\n---\n"
