@@ -1,3 +1,5 @@
+# קובץ: main.py
+
 from colorama import Fore, Style, init
 from utils import clear_screen, typewriter, load_memory, save_memory
 from chatbot import ai_response, handle_task, conversation_memory
@@ -17,16 +19,25 @@ def chat_loop():
             print(Fore.CYAN + "👋 Goodbye!")
             break
 
+        user_input_lower = user_input.lower()
         conversation_memory.append(f"User: {user_input}")
 
-        if any(keyword in user_input.lower() for keyword in task_keywords):
-            result = handle_task(user_input)
-        else:
+        # לוגיקה מתוקנת: בודקים אם הקלט *מתחיל* באחת ממילות המפתח
+        is_task = False
+        for keyword in task_keywords:
+            # בודקים אם הקלט מתחיל במילה המדויקת + רווח, או רק במילה המדויקת
+            if user_input_lower.startswith(keyword + " ") or user_input_lower == keyword:
+                result = handle_task(user_input)
+                is_task = True
+                break
+        
+        if not is_task:
             result = ai_response(user_input)
 
         conversation_memory.append(f"CLI-Chat: {result}")
         print(Fore.MAGENTA + "CLI-Chat: " + Style.RESET_ALL, end="")
         typewriter(result, delay=0.001)
+
 
 def main_menu():
     global conversation_memory
@@ -55,7 +66,7 @@ def main_menu():
             print(Fore.CYAN + "👋 Goodbye!")
             break
         else:
-            print(Fore.RED + "Invalid choice. Please select 1, 2, or 3.\n")
+            print(Fore.RED + "Invalid choice. Please select 1, 2, or 3.")
 
 if __name__ == "__main__":
     main_menu()
