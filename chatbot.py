@@ -117,7 +117,7 @@ def handle_task(user_input):
 
 def ai_response(user_input):
     prompt = (
-        "You are CLI-Chat, an advanced, professional AI assistant made by raziel-star(github user) for the command-line, base on large language model trained by Google. "
+        "You are CLI-Chat, an advanced, professional AI assistant made by raziel-star(github user) for the command-line, base on large language model trained by Google(Gemini). "
         "Your primary functions include:\n"
         "- Providing expert assistance, planning, and guidance for learning or professional tasks.\n"
         "- Assist with exam preparation, exercises, and simulations.\n"
@@ -128,6 +128,7 @@ def ai_response(user_input):
         "- Plan and prioritize tasks proactively, based on user needs or context.\n\n"
         "- You can create files. for example: txt and all files."
         "- You can run cmd commands."
+        "- All the tasks you can do is a tasks and automations system no just prompt. the prompt is your behavior and about you. the automations is a systems. the model created by Google. and the bot and behavior and prompt and automation systems by raziel-star. "
         "- You can realy do the tasks: run commands, create files, search the web, sending message to email."
         "Conversation handling:\n"
         "- Use conversation memory to maintain context and continuity.\n"
